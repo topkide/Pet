@@ -105,7 +105,7 @@ function renderSpots(){
   hotspot('2단계 외형 선택',38,73,25,12,()=>go(8));
   hotspot('3단계 외형 선택',63,73,25,12,()=>go(6));
  }
- const evolveReady=current>=3&&current<=5&&growthPoints[current]>=6000;
+ const evolveReady=current>=3&&current<=5&&growthPoints[current]>=growthTarget(current);
  const selectButton=hotspot(current===2?'부화 하기':evolveReady?'진화하기':'선택',32,88,36,9,()=>{
   if(current===2)hatchPet();
   else if(evolveReady)evolvePet();
@@ -149,7 +149,7 @@ function petRateCard(label,rate,badge,detail='',portrait=-1){
  const icon=portrait<0||portrait===4?'<img src="'+shopAssets.baby+'" alt="드래곤 1단계 모습">':'<span class="limited-portrait" role="img" aria-label="'+detail+' 1단계 모습" style="background-image:url('+shopAssets.limitedIcons+');background-position:'+(portrait%3*50)+'% '+(Math.floor(portrait/3)*100)+'%"></span>';
  const name=detail?'<small>'+detail+'</small>':'';
  const tag='<b class="pet-rarity '+badge+'">'+label+'</b>';
- return '<div class="pet-rate-card"><div class="pet-portrait" data-pet-level="1">'+icon+'</div>'+(badge==='limited'?name+tag:tag+name)+'<strong class="pet-percent">'+rate+'</strong></div>';
+ return '<div class="pet-rate-card"><div class="pet-portrait">'+icon+'</div>'+(badge==='limited'?name+tag:tag+name)+'<strong class="pet-percent">'+rate+'</strong></div>';
 }
 function showRates(kind,opener){
  const isExisting=kind==='existing';
@@ -295,11 +295,12 @@ function showGameplay(){
 }
 
 let incubating=false,growthPoints={1:20,3:20,4:20,5:20},resultMode='auto',resultState=null;
+function growthTarget(stage){return stage===1||stage===2?6000:5000;}
 $('phone').style.setProperty('--currency-sprite','url('+shopAssets.currencyIcons+')');
 function resetGrowthState(){incubating=false;growthPoints={1:20,3:20,4:20,5:20};resultMode='auto';resultState=null;}
 function hatchPet(){incubating=false;growthPoints[1]=6000;growthPoints[3]=20;go(3);message('알이 부화했어요. 선택하면 드래곤 펫을 장착합니다.');}
 function evolvePet(){
- if(current<3||current>5||growthPoints[current]<6000)return;
+ if(current<3||current>5||growthPoints[current]<growthTarget(current))return;
  const target=current+1;
  if(equippedPet)equippedPet={screen:target,asset:target===4?'juvenile':'adult'};
  if(target<=5)growthPoints[target]=20;
@@ -308,11 +309,11 @@ function evolvePet(){
 function advanceGrowth(){
  if(current===1){incubating=true;growthPoints[1]=6000;go(2);return;}
  if(current===2){hatchPet();return;}
- if(current>=3&&current<=5){if(growthPoints[current]>=6000)evolvePet();else{growthPoints[current]=6000;go(current);}}
+ if(current>=3&&current<=5){if(growthPoints[current]>=growthTarget(current))evolvePet();else{growthPoints[current]=growthTarget(current);go(current);}}
 }
 function updateGrowthPreview(){
  const stageButtons=[...document.querySelectorAll('#steps [data-stage],#steps [data-ready-stage]')];
- const isReady=current>=3&&current<=5&&growthPoints[current]>=6000;
+ const isReady=current>=3&&current<=5&&growthPoints[current]>=growthTarget(current);
  stageButtons.forEach((button,index)=>{
   const selected=isReady?Number(button.dataset.readyStage)===current:Number(button.dataset.stage)===current;
   button.toggleAttribute('aria-current',selected);
@@ -321,22 +322,26 @@ function updateGrowthPreview(){
  if(current===1)incubating=true;
  if(current===2){incubating=true;growthPoints[1]=6000;}
  if(current<3||current>5)return;
- const ready=growthPoints[current]>=6000;
+ const target=growthTarget(current),points=Math.min(growthPoints[current],target);
+ const ready=points>=target;
+ const requirement=document.createElement('div');requirement.className='growth-requirement';requirement.textContent='[일반 게임] '+target+'M 점프';$('spots').append(requirement);
+ const gauge=document.createElement('div');gauge.className='growth-complete';gauge.textContent=points+' / '+target;gauge.setAttribute('aria-label','성장 포인트 '+points+' / '+target);
+ if(!ready)gauge.style.background='linear-gradient(to right,#ffe735 '+Math.max(1,points/target*100)+'%,#805a2e '+Math.max(1,points/target*100)+'%)';
+ $('spots').append(gauge);
  $('next').textContent=ready?'진화하기 →':'성장 조건 달성으로 →';
  if(!ready)return;
  $('title').textContent='펫 '+(current-2)+'번 진화 가능';
  $('caption').textContent='성장 포인트를 모두 모았어요. 아래 ‘진화하기’를 눌러 다음 단계로 성장하세요.';
- const gauge=document.createElement('div');gauge.className='growth-complete';gauge.textContent='6000 / 6000';gauge.setAttribute('aria-label','성장 포인트 6000 / 6000');$('spots').append(gauge);
  const ad=hotspot('성장 완료 · 광고 비활성',72,73.5,25,10.5,()=>{});ad.disabled=true;
 }
 function currentResultState(){
- if(equippedPet){const stage=equippedPet.screen;if(stage>=6)return {kind:'complete',stage};return {kind:growthPoints[stage]>=6000?'evolve':'growth',stage};}
+ if(equippedPet){const stage=equippedPet.screen;if(stage>=6)return {kind:'complete',stage};return {kind:growthPoints[stage]>=growthTarget(stage)?'evolve':'growth',stage};}
  if(incubating)return {kind:growthPoints[1]>=6000?'hatch':'egg',stage:1};
  return {kind:'none',stage:null};
 }
 function finishGame(){
  stopGameplay();const state=currentResultState();
- if(state.stage!==null&&state.stage<6)growthPoints[state.stage]=Math.min(6000,growthPoints[state.stage]+6);
+ if(state.stage!==null&&state.stage<6)growthPoints[state.stage]=Math.min(growthTarget(state.stage),growthPoints[state.stage]+6);
  resultMode='auto';go(-6);
 }
 function chooseResultScenario(mode){
@@ -345,7 +350,7 @@ function chooseResultScenario(mode){
  if(mode==='hatch'){equippedPet=null;incubating=true;growthPoints[1]=6000;}
  if(mode==='growth'||mode==='evolve'){
   const stage=equippedPet&&equippedPet.screen>=3&&equippedPet.screen<=5?equippedPet.screen:3;
-  incubating=false;equippedPet={screen:stage,asset:stage===3?'baby':stage===4?'juvenile':'adult'};growthPoints[stage]=mode==='evolve'?6000:6;
+  incubating=false;equippedPet={screen:stage,asset:stage===3?'baby':stage===4?'juvenile':'adult'};growthPoints[stage]=mode==='evolve'?growthTarget(stage):6;
  }
  if(mode==='complete'){incubating=false;equippedPet={screen:6,asset:'adult'};}
  go(-6);
@@ -368,8 +373,9 @@ function showGameResult(){
   const ready=resultState.kind==='hatch'||resultState.kind==='evolve';
   const status=resultState.kind==='hatch'?'부화 가능':resultState.kind==='evolve'?'진화 가능':resultState.kind==='complete'?'최종 성장 완료':null;
   const points=growthPoints[resultState.stage]||0;
+  const target=growthTarget(resultState.stage);
   const level=levelForScreen(resultState.stage);
-  card.innerHTML='<span class="result-pet-portrait" data-pet-level="'+level+'"><img src="'+(level===0?shopAssets.baby:dragonIllustration(level))+'" alt="드래곤 '+Math.max(1,level)+'단계 모습"></span><span class="result-pet-name">드래곤 펫</span><span class="result-xp-label">'+pawIcon+' 펫 경험치</span>'+(status?'<span class="result-pet-status '+(ready?'ready':'complete')+'">'+status+'</span>':'<span class="result-xp-track"><span style="width:'+Math.max(1,points/6000*100)+'%"></span><b>'+points+'/6000M</b></span>');
+  card.innerHTML='<span class="result-pet-portrait" data-pet-level="'+level+'"><img src="'+(level===0?shopAssets.baby:dragonIllustration(level))+'" alt="드래곤 '+Math.max(1,level)+'단계 모습"></span><span class="result-pet-name">드래곤 펫</span><span class="result-xp-label">'+pawIcon+' 펫 경험치</span>'+(status?'<span class="result-pet-status '+(ready?'ready':'complete')+'">'+status+'</span>':'<span class="result-xp-track"><span style="width:'+Math.max(1,points/target*100)+'%"></span><b>'+points+'/'+target+'M</b></span>');
  }
  hotspot('게임오버 · 홈으로',12,pet?82.5:81.5,24,9,()=>go(-4));
  hotspot('게임오버 · 재시작',41,pet?82.5:81.5,50,9,()=>go(-5));
@@ -385,7 +391,7 @@ document.querySelectorAll('#steps [data-stage]').forEach(button=>{
  button.onclick=()=>{growthPoints[stage]=20;go(stage)};
  const readyButton=document.createElement('button');readyButton.className='step';readyButton.dataset.readyStage=stage;
  readyButton.innerHTML='<span></span>펫 '+(stage-2)+'번 진화 가능';
- readyButton.onclick=()=>{growthPoints[stage]=6000;go(stage)};
+ readyButton.onclick=()=>{growthPoints[stage]=growthTarget(stage);go(stage)};
  button.after(readyButton);
 });
 document.querySelectorAll('#steps [data-stage],#steps [data-ready-stage]').forEach((button,index)=>button.querySelector('span').textContent=index+1);
@@ -540,6 +546,7 @@ go(-4);
 .result-pet-status{background:#ffd334}.result-pet-status.complete{background:#f4dc7c;font-size:3cqw}.result-xp-track{background:#aaa;overflow:hidden}.result-xp-track>span{position:absolute;inset:0 auto 0 0;background:#ffe735}.result-xp-track b{position:relative;font-weight:normal;font-size:2.9cqw}
 .hot.evolve-action,.phone.hints .hot.evolve-action{display:grid;place-items:center;background:#fffae5;border:3px solid #82402c;border-radius:15%;box-shadow:inset 0 4px white,inset 0 -5px #e5b590;color:#b52a28;text-shadow:1px 1px #fda79b;font-size:7cqw;font-weight:900;line-height:1}
 .growth-complete{position:absolute;left:5%;top:80%;width:63%;height:2.5%;display:grid;place-items:center;background:#ffdc26;border:2px solid #6c3d16;color:#fff;font:bold 3.5cqw/1 sans-serif;text-shadow:1px 1px #3c1c00,-1px -1px #3c1c00}
+.growth-requirement{position:absolute;left:15.5%;top:76.9%;width:52%;height:2.6%;display:flex;align-items:center;background:#080604;color:#ffed31;font:bold 3.8cqw/1 sans-serif;white-space:nowrap;pointer-events:none}
 .game-end{margin-top:8px;background:#ffdd8c;color:#683034;border:2px solid #996348;border-radius:6px;font-size:3.4cqw;padding:5px;font-weight:bold}.game-preview footer:has(.game-end) p{display:none}
 @media(max-width:720px){.phone.result-screen{width:min(100%,360px)}}
 </style>
@@ -581,7 +588,7 @@ go(-4);
 .phone [data-pet-level]:not([data-pet-level="0"])::before{content:'';position:absolute;left:-10%;top:-13%;width:28%;height:35%;z-index:2;background:var(--gem-image) center/contain no-repeat;filter:drop-shadow(1px 1px 0 var(--gem-edge));pointer-events:none}
 .phone [data-pet-level]:not([data-pet-level="0"])::after{content:'';position:absolute;inset:-2px;pointer-events:none;border-radius:5px;background:linear-gradient(var(--gem-light),var(--gem-light)) right 1px top 3px/3px 8px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) right 3px top 1px/8px 3px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) left 1px bottom 3px/3px 8px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) left 3px bottom 1px/8px 3px no-repeat}
 .pet-collection .collection-grid{padding:9px 5px 3px;gap:15px 12px}
-.pet-rates:not(.pet-collection) .pet-rate-card{padding-top:13px}
+.pet-rates:not(.pet-collection) .pet-portrait{border:0;outline:none;box-shadow:none;border-radius:0;background:transparent}
 .phone .result-pet-portrait:not([data-pet-level="0"]){margin-top:3px}
 </style>
 </html>
