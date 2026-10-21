@@ -65,7 +65,7 @@ const pawIcon='<svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="cris
 const catIcon='<svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="crispEdges"><path fill="#302b32" d="M3 2h4v3h4v3h10V5h4V2h4v24h-4v4H7v-4H3z"/><path fill="#64797d" d="M5 6h3v5h16V6h3v18h-4v4H9v-4H5z"/><path fill="#f4b1bc" d="M6 7h2v5H6zM24 7h2v5h-2z"/><path fill="#fff8df" d="M7 16h6v5H7zM19 16h6v5h-6zM11 22h10v6H11z"/><path fill="#22212a" d="M10 17h3v4h-3zM19 17h3v4h-3zM15 23h2v4h-2z"/><path fill="#f48b9a" d="M14 21h4v3h-4z"/></svg>';
 const descriptions=[
 '일반 부화기는 6,000 경험치를 채운 후 부화하고, 특별한 부화기는 알 성장 없이 바로 부화할 수 있습니다.',
-'일반 부화기로 알 성장 중입니다. 6,000 경험치를 채워야 부화할 수 있으며, 성장 중에는 선택할 수 없습니다.',
+'일반 부화기로 알 성장 중입니다. 선택 버튼으로 알을 장착하세요. 장착한 알만 경험치를 얻으며, 6,000 경험치를 채우면 부화할 수 있습니다.',
 '부화할 수 있습니다. 화면의 ‘부화 하기’를 눌러 펫을 부화시키세요.',
 '부화한 1단계 펫을 키웁니다. 아래 버튼으로 다음 성장 상태를 확인하세요.',
 '2단계 펫을 키웁니다. 아래 버튼으로 다음 성장 상태를 확인하세요.',
@@ -110,11 +110,11 @@ function renderSpots(){
   if(current===2)hatchPet();
   else if(evolveReady)evolvePet();
   else if(current===0)message('먼저 위의 부화기를 선택하세요.');
+  else if(current===1){equippedPet={screen:1,asset:'egg'};go(-4);message('드래곤 알을 장착했어요. 장착한 알만 경험치를 얻습니다.');}
   else if(current>=3){incubating=false;equippedPet={screen:current,asset:current===3||current===7?'baby':current===4||current===8?'juvenile':'adult'};go(-4);message('드래곤 펫을 선택했어요. 펫을 누르면 선택 화면으로 돌아갑니다.');}
  });
  if(evolveReady){selectButton.classList.add('evolve-action');selectButton.textContent='진화하기';}
- selectButton.disabled=current===1;
- if(current===1)selectButton.title='알 성장 중에는 선택할 수 없습니다';
+ if(current===1)selectButton.title='알 장착하기';
 }
 screens.forEach((s,i)=>{const b=document.createElement('button');b.className='step';b.dataset.stage=i;const num=document.createElement('span');num.textContent=i+1;b.append(num,document.createTextNode(s.name));b.onclick=()=>go(i);$('steps').append(b)});
 $('prev').onclick=()=>go(current-1);$('next').onclick=()=>{if(current===-1)go(lastPet);else if(current===8){lastPet=0;go(-1)}else go(current+1)};$('reset').onclick=()=>{lastPet=0;go(-1)};$('entry').onclick=()=>go(-1);
@@ -199,7 +199,7 @@ go=function(i){
   $('prev').disabled=true;$('next').textContent='펫 선택으로 들어가기 →';message('');
   document.querySelectorAll('[aria-current="step"]').forEach(b=>b.removeAttribute('aria-current'));$('mainEntry').setAttribute('aria-current','step');$('spots').replaceChildren();
   const pet=hotspot('펫 선택 화면으로 이동',74,29,20.5,11.4,()=>go(lastPet));pet.classList.add('main-pet-button');pet.innerHTML=pawIcon+'<span>펫</span>';
-  if(equippedPet){const companion=hotspot('장착한 드래곤 펫 · 펫 선택 화면으로',26,53.5,14,8,()=>go(equippedPet.screen));companion.classList.add('equipped-pet');const sprite=document.createElement('img');sprite.src=shopAssets[equippedPet.asset];sprite.alt='장착한 드래곤 펫';companion.append(sprite);}
+  if(equippedPet){const name=equippedPet.asset==='egg'?'드래곤 알':'드래곤 펫';const companion=hotspot('장착한 '+name+' · 펫 선택 화면으로',26,53.5,14,8,()=>go(equippedPet.screen===1&&growthPoints[1]>=6000?2:equippedPet.screen));companion.classList.add('equipped-pet');const sprite=document.createElement('img');sprite.src=shopAssets[equippedPet.asset];sprite.alt='장착한 '+name;companion.append(sprite);}
   hotspot('캐릭터 선택 화면으로 이동',3,89,20,10,()=>go(-1));
   hotspot('상점 · 펫 뽑기로 이동',3,20,15,8,()=>{shopTab='pet';go(-3)});
   hotspot('게임 시작 · 펫 움직임 미리보기',60,78,36,20,()=>go(-5));
@@ -298,7 +298,7 @@ let incubating=false,growthPoints={1:20,3:20,4:20,5:20},resultMode='auto',result
 function growthTarget(stage){return stage===1||stage===2?6000:5000;}
 $('phone').style.setProperty('--currency-sprite','url('+shopAssets.currencyIcons+')');
 function resetGrowthState(){incubating=false;growthPoints={1:20,3:20,4:20,5:20};resultMode='auto';resultState=null;}
-function hatchPet(){incubating=false;growthPoints[1]=6000;growthPoints[3]=20;go(3);message('알이 부화했어요. 선택하면 드래곤 펫을 장착합니다.');}
+function hatchPet(){incubating=false;growthPoints[1]=6000;growthPoints[3]=20;if(equippedPet?.asset==='egg')equippedPet={screen:3,asset:'baby'};go(3);message('알이 부화했어요. 선택하면 드래곤 펫을 장착합니다.');}
 function evolvePet(){
  if(current<3||current>5||growthPoints[current]<growthTarget(current))return;
  const target=current+1;
@@ -335,8 +335,8 @@ function updateGrowthPreview(){
  const ad=hotspot('성장 완료 · 광고 비활성',72,73.5,25,10.5,()=>{});ad.disabled=true;
 }
 function currentResultState(){
+ if(equippedPet?.asset==='egg')return {kind:growthPoints[1]>=6000?'hatch':'egg',stage:1};
  if(equippedPet){const stage=equippedPet.screen;if(stage>=6)return {kind:'complete',stage};return {kind:growthPoints[stage]>=growthTarget(stage)?'evolve':'growth',stage};}
- if(incubating)return {kind:growthPoints[1]>=6000?'hatch':'egg',stage:1};
  return {kind:'none',stage:null};
 }
 function finishGame(){
@@ -347,7 +347,7 @@ function finishGame(){
 function chooseResultScenario(mode){
  resultMode=mode;
  if(mode==='none'){equippedPet=null;incubating=false;}
- if(mode==='hatch'){equippedPet=null;incubating=true;growthPoints[1]=6000;}
+ if(mode==='hatch'){equippedPet={screen:1,asset:'egg'};incubating=true;growthPoints[1]=6000;}
  if(mode==='growth'||mode==='evolve'){
   const stage=equippedPet&&equippedPet.screen>=3&&equippedPet.screen<=5?equippedPet.screen:3;
   incubating=false;equippedPet={screen:stage,asset:stage===3?'baby':stage===4?'juvenile':'adult'};growthPoints[stage]=mode==='evolve'?growthTarget(stage):6;
