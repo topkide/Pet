@@ -144,7 +144,7 @@ let equippedPet=null;
 const incubatorInfo=$('infoText').innerHTML;
 const originalOpenInfo=openInfo;
 openInfo=function(e){$('infoOverlay').classList.remove('pet-rates');$('infoConfirm').textContent='확인';$('infoConfirm').onclick=closeInfo;$('infoTitle').textContent='설명';$('infoText').innerHTML=incubatorInfo;originalOpenInfo(e)};
-const limitedPets=[{name:'토끼 펫',rate:'20%'},{name:'고양이 펫',rate:'20%'},{name:'햄스터 펫',rate:'20%'},{name:'강아지 펫',rate:'20%'},{name:'드래곤 펫',rate:'10%'},{name:'백호 펫',rate:'10%'}];
+const limitedPets=[{name:'토끼 펫',rate:'20%'},{name:'고양이 펫',rate:'20%'},{name:'햄스터 펫',rate:'20%'},{name:'강아지 펫',rate:'20%'},{name:'드래곤 펫',rate:'20%'}];
 function petRateCard(label,rate,badge,detail='',portrait=-1){
  const icon=portrait<0||portrait===4?'<img src="'+shopAssets.baby+'" alt="드래곤 1단계 모습">':'<span class="limited-portrait" role="img" aria-label="'+detail+' 1단계 모습" style="background-image:url('+shopAssets.limitedIcons+');background-position:'+(portrait%3*50)+'% '+(Math.floor(portrait/3)*100)+'%"></span>';
  const name=detail?'<small>'+detail+'</small>':'';
