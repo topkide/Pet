@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>캣점프 · 펫 성장 흐름</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#11141e;color:#f4f5fa;font:15px/1.6 "Malgun Gothic",sans-serif}button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid #ffdb75;outline-offset:3px}button:disabled{opacity:.35;cursor:default}
+.layout{max-width:1150px;margin:auto;padding:28px;display:grid;grid-template-columns:300px 1fr;gap:38px;align-items:start}aside{position:sticky;top:28px}.eyebrow{color:#b7a4ff;font-size:12px;letter-spacing:2px;font-weight:bold}h1{font-size:26px;margin:6px 0 8px}p{color:#aeb6c9;margin:0 0 20px}.steps{display:grid;gap:6px;margin:18px 0}.step{display:flex;align-items:center;gap:12px;padding:10px 12px;background:#1d2231;color:#c7cede;border:1px solid transparent;border-radius:10px;text-align:left}.step span{border-radius:50%;background:#30384e;width:26px;height:26px;text-align:center;font-size:13px}.step[aria-current=step]{background:#302947;border-color:#a88aff;color:white}.step[aria-current=step] span{background:#a88aff;color:#171122}.minor{background:transparent;color:#bbc3d6;border:1px solid #46516a;border-radius:8px;padding:8px 14px}.note{font-size:12px;color:#8e98af;margin-top:16px}.stage{display:flex;flex-direction:column;align-items:center;min-width:0}.heading{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.heading h2{font-size:18px;margin:0}.heading small{color:#aeb6c9}
+.phone{position:relative;width:min(100%,calc((100dvh - 225px) * .462));min-width:250px;line-height:0;box-shadow:0 14px 50px #0008;border-radius:12px;overflow:hidden;background:#202638}.phone img{display:block;width:100%;height:auto}.hot{position:absolute;border:2px solid transparent;border-radius:8px;background:transparent;color:transparent;padding:0}.hot:hover,.phone.hints .hot{border-color:#69efff;background:#69efff20;box-shadow:0 0 10px #69efff66}.hot:focus-visible{outline:3px solid #69efff;outline-offset:-3px}.caption{max-width:460px;min-height:48px;text-align:center;color:#bec6d7;font-size:13px;margin:10px 0}.nav{width:100%;max-width:460px;display:flex;gap:10px}.nav button{border:0;border-radius:10px;padding:12px 14px}.prev{background:#2a3143;color:white}.next{background:#c6b4ff;color:#201737;flex:1;font-weight:bold}#toast{margin-top:8px;color:#ffdf8c;text-align:center;min-height:24px;font-size:13px}.check{font-size:13px;display:block;color:#bbc3d6}.check input{accent-color:#b69aff}
+@media(max-width:720px){.layout{display:flex;flex-direction:column;padding:18px;gap:20px}aside{position:static;width:100%}h1{font-size:22px}.steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.step{font-size:11px;gap:4px;padding:8px 5px}.step span{width:18px;height:18px;font-size:10px;flex-shrink:0}.stage{width:100%}.phone{width:min(100%,360px);min-width:0}.note{margin-bottom:0}p{margin-bottom:10px}}
+.hot:disabled,.hot:disabled:hover,.phone.hints .hot:disabled{opacity:1;cursor:not-allowed;border:0;box-shadow:none;background:transparent;backdrop-filter:grayscale(1) brightness(.72);-webkit-backdrop-filter:grayscale(1) brightness(.72);border-radius:18%}
+</style>
+<style>
+.switch-icon,.switch-icon:hover,.phone.hints .switch-icon{display:grid;place-items:center;border:2px solid #593728;border-radius:22%;background:#fff49c;box-shadow:inset 0 3px #fffde4,inset 0 -4px #e9a158;color:#532c33;line-height:1;padding:8%;padding:4px}.switch-icon:hover{filter:brightness(1.12)}.switch-icon svg{width:90%;height:90%;pointer-events:none}.phone.character{width:min(100%,calc((100dvh - 225px) * .521))}.entry{margin-bottom:8px}.phone .pet-entry{border-radius:50%;padding:4px}.phone .pet-entry svg{width:85%;height:85%}@media(max-width:720px){.phone.character{width:min(100%,360px)}}
+</style>
+<main class="layout">
+<aside>
+<div class="eyebrow">CAT JUMP · UI FLOW</div>
+<h1>펫 성장 흐름</h1>
+<p>메인 화면에서 펫 선택으로 이어지는<br>개인 검토용 시뮬레이션</p>
+<button class="step entry" id="mainEntry"><span>⌂</span>메인 화면 · 펫 바로가기</button>
+<button class="step entry" id="gameEntry"><span>↔</span>인게임 · 펫 따라오기</button>
+<button class="step entry" id="resultEntry"><span>▣</span>게임오버 · 경험치 진행도</button>
+<button class="step entry" id="resultHatchEntry"><span>▣</span>게임오버 · 부화 가능</button>
+<button class="step entry" id="resultEvolveEntry"><span>▣</span>게임오버 · 진화 가능</button>
+<button class="step entry" id="entry"><span>↔</span>캐릭터 선택 · 입구</button>
+<button class="step entry" id="collectionEntry"><span>▤</span>펫 컬렉션</button>
+<button class="step entry" id="shopEntry"><span>▣</span>상점 · 펫 뽑기</button>
+<nav class="steps" aria-label="단계 바로가기" id="steps">
+<button class="step" id="unownedEntry"><span>＋</span>미보유 알 · 뽑으러 가기</button>
+</nav>
+<button class="minor" id="reset">처음부터 보기</button>
+<label class="check"><input type="checkbox" id="hints"> 이미지 안의 클릭 영역 보기</label>
+<div class="note">원본 UI 이미지를 그대로 사용했어요.<br>게임 플레이·재화 차감·광고 재생은 생략하고, 아래 진행 버튼으로 다음 상태를 확인합니다.<br>키보드 ← → 이동도 가능합니다.</div>
+</aside>
+<section class="stage">
+<div class="heading"><h2 id="title"></h2><small id="counter"></small></div>
+<div class="phone" id="phone"><img id="screen" alt=""><div id="spots"></div>
+<div id="infoOverlay" class="info-overlay" hidden>
+<section class="info-sheet" role="dialog" aria-modal="true" aria-labelledby="infoTitle" aria-describedby="infoText">
+<header><h3 id="infoTitle">설명</h3><button id="infoClose" aria-label="설명 닫기">×</button></header>
+<div id="infoText" class="info-text">
+<p><strong>일반 부화기 · 500 코인</strong><br>알 성장 단계를 거쳐 <strong>6,000 경험치</strong>를 채워야 부화할 수 있습니다. 일반 게임 플레이와 광고 보상으로 경험치를 채워주세요.</p>
+<p><strong>특별한 부화기</strong><br>알 성장 단계를 건너뛰고 <strong>바로 부화할 수 있습니다.</strong> 부화를 위한 6,000 경험치를 채울 필요가 없습니다.</p>
+<p>부화 가능한 상태에서 <strong>‘부화 하기’</strong> 버튼을 누르면 펫이 부화합니다.</p>
+<p>부화한 펫은 장착하여 함께 성장시킬 수 있습니다.</p>
+</div>
+<button id="infoConfirm" class="info-confirm">확인</button>
+</section></div></div>
+<div class="caption" id="caption"></div>
+<label class="result-demo" id="resultDemo" hidden>결과 상태 미리보기 <select id="resultScenario"><option value="auto">현재 플레이 상태</option><option value="none">펫 미장착</option><option value="growth">펫 성장중</option><option value="hatch">부화 가능</option><option value="evolve">진화 가능</option><option value="complete">최종 성장 완료</option></select></label>
+<div class="nav"><button class="prev" id="prev">← 이전</button><button class="next" id="next"></button></div>
+<div id="toast" role="status" aria-live="polite"></div>
+</section>
+</main>
+<style>
+.hot.info-button,.phone.hints .hot.info-button{z-index:3;display:grid;place-items:center;border:2px solid #777;border-radius:3px;background:#fffde9;color:#382820;font:bold 18px/1 sans-serif;box-shadow:0 2px 0 #4c332c}.hot.info-button:hover{background:#fff2a6}
+.info-overlay[hidden]{display:none}.info-overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:#0009;line-height:1.6}
+.info-sheet{width:90%;height:75%;display:flex;flex-direction:column;padding:16px 18px;border:2px solid #888;border-radius:20px;background:#f4f4f2;color:#29282a;box-shadow:0 8px 24px #0005}.info-sheet header{position:relative;flex-shrink:0;text-align:center;margin-bottom:24px}.info-sheet h3{font-size:25px;font-weight:400;margin:0}.info-sheet header button{position:absolute;right:-8px;top:-8px;width:32px;height:32px;border:0;background:transparent;color:#676767;font-size:26px;line-height:1}.info-text{overflow:auto;flex:1;font-size:14px;line-height:1.85}.info-text p{color:#393939;margin:0 0 18px}.info-confirm{flex-shrink:0;align-self:center;min-width:110px;padding:9px 22px;margin-top:16px;background:#fff0a4;border:2px solid #aa8054;border-radius:9px;color:#533526;font-weight:bold}
+</style>
+<script>
+const screens=[{"name": "알 부화기 선택", "src": "assets/png-01.png"}, {"name": "알 성장중", "src": "assets/png-02.png"}, {"name": "알 부화 가능", "src": "assets/png-03.png"}, {"name": "펫 1번 성장중", "src": "assets/png-04.png"}, {"name": "펫 2번 성장중", "src": "assets/png-05.png"}, {"name": "펫 3번 성장중", "src": "assets/png-06.png"}, {"name": "펫 3번 선택", "src": "assets/png-07.png"}, {"name": "펫 1번 선택", "src": "assets/png-08.png"}, {"name": "펫 2번 선택", "src": "assets/png-09.png"}];
+const characterScreen={"name": "캐릭터 선택", "src": "assets/png-10.png"};
+const pawIcon='<svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="crispEdges"><path fill="#653642" d="M3 6h7v9H3zM12 2h7v11h-7zM22 6h7v9h-7zM9 16h14v3h4v10H5V19h4z"/><path fill="#f58eaa" d="M5 8h3v5H5zM14 4h3v7h-3zM24 8h3v5h-3zM11 18h10v3h4v6H7v-6h4z"/></svg>';
+const catIcon='<svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="crispEdges"><path fill="#302b32" d="M3 2h4v3h4v3h10V5h4V2h4v24h-4v4H7v-4H3z"/><path fill="#64797d" d="M5 6h3v5h16V6h3v18h-4v4H9v-4H5z"/><path fill="#f4b1bc" d="M6 7h2v5H6zM24 7h2v5h-2z"/><path fill="#fff8df" d="M7 16h6v5H7zM19 16h6v5h-6zM11 22h10v6H11z"/><path fill="#22212a" d="M10 17h3v4h-3zM19 17h3v4h-3zM15 23h2v4h-2z"/><path fill="#f48b9a" d="M14 21h4v3h-4z"/></svg>';
+const descriptions=[
+'일반 부화기는 6,000 경험치를 채운 후 부화하고, 특별한 부화기는 알 성장 없이 바로 부화할 수 있습니다.',
+'일반 부화기로 알 성장 중입니다. 6,000 경험치를 채워야 부화할 수 있으며, 성장 중에는 선택할 수 없습니다.',
+'부화할 수 있습니다. 화면의 ‘부화 하기’를 눌러 펫을 부화시키세요.',
+'부화한 1단계 펫을 키웁니다. 아래 버튼으로 다음 성장 상태를 확인하세요.',
+'2단계 펫을 키웁니다. 아래 버튼으로 다음 성장 상태를 확인하세요.',
+'3단계 성장 중입니다. 아래 버튼을 누르면 최종 성장 완료 상태로 넘어갑니다.',
+'최종 성장 완료! 아이콘을 눌러 외형을 바꿔보세요. 금색 이름표는 유지됩니다.',
+'1단계 외형을 골라도 최종 성장 상태와 금색 이름표가 유지됩니다.',
+'2단계 외형 선택까지 확인했어요. 아이콘으로 외형을 자유롭게 바꿀 수 있습니다.'
+];
+const nextLabels=['부화기 선택 후 진행 →','조건 달성으로 넘기기 →','부화 하기 →','2단계 성장으로 →','3단계 성장으로 →','최종 성장 완료로 →','1단계 외형 보기 →','2단계 외형 보기 →','처음부터 다시 보기 ↺'];
+let current=-1,lastPet=0;
+const $=id=>document.getElementById(id);
+function message(t){$('toast').textContent=t}
+let infoOpener=null;
+function infoBackground(inert){document.querySelectorAll('aside,.heading,.nav,#spots').forEach(el=>el.inert=inert)}
+function openInfo(e){infoOpener=e.currentTarget;$('infoOverlay').hidden=false;infoBackground(true);$('infoClose').focus()}
+function closeInfo(){$('infoOverlay').hidden=true;$('infoOverlay').classList.remove('pet-collection');infoBackground(false);if(infoOpener?.isConnected)infoOpener.focus()}
+function go(i){current=Math.max(-1,Math.min(8,i));if(current>=0)lastPet=current;const isCharacter=current===-1;const item=isCharacter?characterScreen:screens[current];$('phone').classList.toggle('character',isCharacter);$('screen').src=item.src;$('screen').alt=item.name+' UI';$('title').textContent=item.name;$('counter').textContent=isCharacter?'입구':(current+1)+' / 9';$('caption').textContent=isCharacter?'즐겨찾기 옆 발바닥 아이콘을 누르면 펫 선택 화면으로 이동합니다.':descriptions[current];$('next').textContent=isCharacter?'펫 선택으로 들어가기 →':nextLabels[current];$('prev').disabled=isCharacter;message('');document.querySelectorAll('#steps .step[data-stage]').forEach((b,n)=>{if(n===current)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});if(isCharacter)$('entry').setAttribute('aria-current','step');else $('entry').removeAttribute('aria-current');renderSpots()}
+function hotspot(label,x,y,w,h,fn){const b=document.createElement('button');b.className='hot';b.setAttribute('aria-label',label);b.title=label;Object.assign(b.style,{left:x+'%',top:y+'%',width:w+'%',height:h+'%'});b.onclick=fn;$('spots').append(b);return b}
+function renderSpots(){
+ $('spots').replaceChildren();
+ if(current===-1){
+  const pet=hotspot('펫 선택 화면으로 이동',41.8,27.2,13.4,6.9,()=>go(lastPet));pet.classList.add('switch-icon','pet-entry');pet.innerHTML=pawIcon;
+  return;
+ }
+ hotspot('홈 · 메인 화면으로',3,5,16,7,()=>go(-4));
+ hotspot('펫 컬렉션 열기',4,13.2,19,7.2,openCollection);
+ hotspot('즐겨찾기 펫 컬렉션 열기',25,13.2,14,7.2,e=>openCollection(e,true));
+ const character=hotspot('캐릭터 선택 화면으로 돌아가기',39,13.5,13,5.9,()=>go(-1));character.classList.add('switch-icon');character.innerHTML=catIcon;
+ if(current===0){
+  hotspot('일반 부화기 선택',2,72,48,12,()=>{incubating=true;go(1);message('일반 부화기: 6,000 경험치를 채우면 부화할 수 있어요.')});
+  const price=document.createElement('span');price.className='incubator-price';price.textContent='500';price.setAttribute('aria-label','일반 부화기 가격 500 코인');$('spots').append(price);
+  hotspot('특별 부화기 선택',51,72,47,12,()=>{incubating=true;growthPoints[1]=6000;go(2);message('특별한 부화기: 알 성장 없이 바로 부화할 수 있어요.')});
+  [['일반 부화기 설명',44],['특별 부화기 설명',92]].forEach(([label,x])=>{const b=hotspot(label,x,70.8,6,3.4,openInfo);b.classList.add('info-button');b.textContent='!'});
+ }
+ if(current>=6){
+  hotspot('1단계 외형 선택',12,73,25,12,()=>go(7));
+  hotspot('2단계 외형 선택',38,73,25,12,()=>go(8));
+  hotspot('3단계 외형 선택',63,73,25,12,()=>go(6));
+ }
+ const evolveReady=current>=3&&current<=5&&growthPoints[current]>=6000;
+ const selectButton=hotspot(current===2?'부화 하기':evolveReady?'진화하기':'선택',32,88,36,9,()=>{
+  if(current===2)hatchPet();
+  else if(evolveReady)evolvePet();
+  else if(current===0)message('먼저 위의 부화기를 선택하세요.');
+  else if(current>=3){incubating=false;equippedPet={screen:current,asset:current===3||current===7?'baby':current===4||current===8?'juvenile':'adult'};go(-4);message('드래곤 펫을 선택했어요. 펫을 누르면 선택 화면으로 돌아갑니다.');}
+ });
+ if(evolveReady){selectButton.classList.add('evolve-action');selectButton.textContent='진화하기';}
+ selectButton.disabled=current===1;
+ if(current===1)selectButton.title='알 성장 중에는 선택할 수 없습니다';
+}
+screens.forEach((s,i)=>{const b=document.createElement('button');b.className='step';b.dataset.stage=i;const num=document.createElement('span');num.textContent=i+1;b.append(num,document.createTextNode(s.name));b.onclick=()=>go(i);$('steps').append(b)});
+$('prev').onclick=()=>go(current-1);$('next').onclick=()=>{if(current===-1)go(lastPet);else if(current===8){lastPet=0;go(-1)}else go(current+1)};$('reset').onclick=()=>{lastPet=0;go(-1)};$('entry').onclick=()=>go(-1);
+$('hints').onchange=e=>$('phone').classList.toggle('hints',e.target.checked);
+$('infoClose').onclick=closeInfo;$('infoConfirm').onclick=closeInfo;
+$('infoOverlay').onclick=e=>{if(e.target===$('infoOverlay'))closeInfo()};
+document.addEventListener('keydown',e=>{
+ if(!$('infoOverlay').hidden){
+  if(e.key==='Escape'){e.preventDefault();closeInfo()}
+  if(e.key==='Tab'){
+   const controls=[...$('infoOverlay').querySelectorAll('button:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length);
+   const index=controls.indexOf(document.activeElement);e.preventDefault();controls[(index+(e.shiftKey?-1:1)+controls.length)%controls.length].focus();
+  }
+  return;
+ }
+ if(e.target.matches('input,select,textarea'))return;
+ if(current===-3)return;
+ if(current===-6){if(e.key==='ArrowRight'){e.preventDefault();go(-5)}return;}
+ if(current===-5){if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();jumpWithPet(e.key==='ArrowLeft'?-1:1)}return;}
+ if(current===-4){if(e.key==='ArrowRight'){e.preventDefault();go(lastPet)}return;}
+ if(current===-2){if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();go(0)}return;}
+ if(e.key==='ArrowRight'){e.preventDefault();$('next').click()}if(e.key==='ArrowLeft'){e.preventDefault();go(current-1)}
+});
+const shopAssets={"resultDefault": "assets/png-11.png", "resultPet": "assets/png-12.png", "currencyIcons": "assets/png-13.png", "gameBackground": "assets/png-14.png", "gameCat": "assets/png-15.png", "juvenile": "assets/png-16.png", "main": "assets/png-17.png", "limitedIcons": "assets/png-18.png", "banner": "assets/png-19.png", "shop": "assets/png-20.png", "unowned": "assets/png-21.png", "egg": "assets/png-22.png", "baby": "assets/png-23.png", "adult": "assets/png-24.png"};
+let shopTab='pet';
+let equippedPet=null;
+const incubatorInfo=$('infoText').innerHTML;
+const originalOpenInfo=openInfo;
+openInfo=function(e){$('infoOverlay').classList.remove('pet-rates');$('infoConfirm').textContent='확인';$('infoConfirm').onclick=closeInfo;$('infoTitle').textContent='설명';$('infoText').innerHTML=incubatorInfo;originalOpenInfo(e)};
+const limitedPets=[{name:'토끼 펫',rate:'20%'},{name:'고양이 펫',rate:'20%'},{name:'햄스터 펫',rate:'20%'},{name:'강아지 펫',rate:'20%'},{name:'드래곤 펫',rate:'10%'},{name:'백호 펫',rate:'10%'}];
+function petRateCard(label,rate,badge,detail='',portrait=-1){
+ const icon=portrait<0||portrait===4?'<img src="'+shopAssets.baby+'" alt="드래곤 1단계 모습">':'<span class="limited-portrait" role="img" aria-label="'+detail+' 1단계 모습" style="background-image:url('+shopAssets.limitedIcons+');background-position:'+(portrait%3*50)+'% '+(Math.floor(portrait/3)*100)+'%"></span>';
+ const name=detail?'<small>'+detail+'</small>':'';
+ const tag='<b class="pet-rarity '+badge+'">'+label+'</b>';
+ return '<div class="pet-rate-card"><div class="pet-portrait" data-pet-level="1">'+icon+'</div>'+(badge==='limited'?name+tag:tag+name)+'<strong class="pet-percent">'+rate+'</strong></div>';
+}
+function showRates(kind,opener){
+ const isExisting=kind==='existing';
+ $('infoOverlay').classList.add('pet-rates');
+ $('infoConfirm').textContent=isExisting?'확인':'개별 확률 확인';
+ $('infoConfirm').onclick=isExisting?closeInfo:null;
+ const heading=isExisting?'스페셜 뽑기 확률':(kind==='coin'?'일반 뽑기':'한정 뽑기')+' 확률';
+ const rows=isExisting?[['고양이','20%'],['이모티콘','20%'],['파츠','29%'],['이어하기 하트','10%'],['스타트 대시','10%'],['코인','11%']]:[['일반','미정'],['전설','미정'],['스페셜','미정']];
+ $('infoTitle').textContent=heading;
+ $('infoText').innerHTML='<div class="rate-grid">'+rows.map(([name,rate],i)=>'<div class="rate-card rarity-'+i+'"><div class="rate-symbol">'+(isExisting?'?':['★','★★','★★★'][i])+'</div><b>'+name+'</b><strong>'+rate+'</strong></div>').join('')+'</div><p class="rate-note">'+(isExisting?'참고 이미지에 표시된 확률입니다.':(kind==='gem'?'젬 250개로 1회 뽑을 수 있습니다.<br><strong>기간 한정 펫의 알만 등장합니다.</strong><br>':'펫의 알이 등장합니다.<br>')+'등급별 확률과 개별 펫 확률은 아직 미정입니다.')+'</p>';
+ if(!isExisting){
+  const cards=kind==='coin'?[['일반','80%','normal'],['스페셜','15%','special'],['전설','5%','legend']].map(([label,rate,badge])=>petRateCard(label,rate,badge)).join(''):limitedPets.map((pet,i)=>petRateCard('기간 한정',pet.rate,'limited',pet.name,i)).join('');
+  $('infoText').innerHTML='<div class="pet-rate-grid">'+cards+'</div><p class="rate-note">'+(kind==='coin'?'등급별 등장 확률입니다.':'2026.01.01 ~ 2026.01.01 까지 해당 펫들을 획득할 수 있습니다.<br>1단계 모습으로 표시되며, 해당 펫의 알을 획득합니다.')+'</p>';
+ }
+ infoOpener=opener;$('infoOverlay').hidden=false;infoBackground(true);$('infoClose').focus();
+}
+function renderShop(){
+ $('spots').replaceChildren();
+ hotspot('상점 닫기 · 미보유 알로 돌아가기',86,15.5,12,6,()=>go(-2));
+ const panel=document.createElement('div');panel.className='shop-panel';
+ panel.innerHTML='<div class="draw-hero '+(shopTab==='pet'?'pet-hero':'')+'">'+(shopTab==='pet'?'<span class="hero-spark spark-one">✦</span><img class="side-pet baby" alt="1단계 드래곤" src="'+shopAssets.baby+'"><img class="hero-egg" alt="드래곤의 알" src="'+shopAssets.egg+'"><img class="side-pet adult" alt="3단계 드래곤" src="'+shopAssets.adult+'"><span class="hero-spark spark-two">✦</span><span class="hero-label">새로운 친구를 만나요!</span>':'<div class="mystery-box">?</div><span class="hero-spark spark-one">✦</span><span class="hero-spark spark-two">✦</span>')+'</div>'+
+ '<div class="draw-description"><h3>'+(shopTab==='pet'?'펫 뽑기':'스페셜 뽑기')+'</h3><p>'+(shopTab==='pet'?'다양한 펫의 알이 등장해요!':'다양한 고양이와 아이템이 등장해요!')+'</p>'+(shopTab==='existing'?'<button class="draw-info existing-info" aria-label="스페셜 뽑기 확률 안내">!</button>':'')+'</div>'+
+ '<div class="draw-purchases">'+(shopTab==='pet'?'<div class="purchase-wrap"><button class="purchase coin-draw"><b>일반 뽑기</b><strong><span class="currency-coin" role="img" aria-label="코인"></span> 5,000</strong></button><button class="draw-info" data-rate="coin" aria-label="일반 뽑기 확률 안내">!</button></div><div class="purchase-wrap"><button class="purchase gem-draw"><b>한정 뽑기</b><strong><span class="currency-gem" role="img" aria-label="젬"></span> 250</strong></button><button class="draw-info" data-rate="gem" aria-label="한정 뽑기 확률 안내">!</button></div>':'<div class="purchase-wrap"><button class="purchase gem-draw"><b>1회 뽑기</b><strong><span class="currency-gem" role="img" aria-label="젬"></span> 200</strong></button></div><div class="purchase-wrap"><button class="purchase multi-draw"><b>11회 뽑기</b><strong><span class="currency-gem" role="img" aria-label="젬"></span> 2000</strong></button></div>')+'</div>'+
+ '<div class="draw-tabs" role="tablist" aria-label="뽑기 종류"><button role="tab" aria-selected="'+(shopTab==='existing')+'" data-tab="existing">스페셜 뽑기</button><button role="tab" aria-selected="'+(shopTab==='pet')+'" data-tab="pet">펫 뽑기</button></div>';
+ if(shopTab==='pet'){
+  const banner=document.createElement('img');banner.className='pet-draw-banner';banner.src=shopAssets.banner;banner.alt='알록달록한 배경에 모인 귀여운 펫들';
+  panel.querySelector('.draw-hero').replaceChildren(banner);
+ }
+ $('spots').append(panel);
+ panel.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{shopTab=b.dataset.tab;renderShop();$('caption').textContent=shopTab==='pet'?'일반 뽑기는 코인, 한정 뽑기는 젬 250개를 사용합니다. 한정 뽑기에서는 기간 한정 펫만 등장합니다.':'기존 스페셜 뽑기입니다. 하단 탭으로 펫 뽑기를 선택하세요.'});
+ panel.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>showRates(b.dataset.rate,b));
+ const info=panel.querySelector('.existing-info');if(info)info.onclick=()=>showRates('existing',info);
+ panel.querySelectorAll('.purchase').forEach(b=>b.onclick=()=>message('화면 확인용입니다. 실제 뽑기와 재화 차감은 진행하지 않습니다.'));
+}
+const originalGo=go;
+go=function(i){
+ $('resultDemo').hidden=i!==-6;['resultEntry','resultHatchEntry','resultEvolveEntry'].forEach(id=>$(id).removeAttribute('aria-current'));$('phone').classList.toggle('result-screen',i===-6);
+ stopGameplay();$('gameEntry').removeAttribute('aria-current');
+ if(i===-6){showGameResult();return;}
+ if(i===-5){showGameplay();return;}
+ $('mainEntry').removeAttribute('aria-current');$('phone').classList.toggle('main-screen',i===-4);
+ $('unownedEntry').removeAttribute('aria-current');$('shopEntry').removeAttribute('aria-current');
+ $('phone').classList.toggle('unowned',i===-2);
+ if(i===-4){
+  current=-4;$('phone').classList.remove('character');$('screen').src=shopAssets.main;$('screen').alt='캣점프 메인 화면';
+  $('title').textContent='메인 화면';$('counter').textContent='입구';$('caption').textContent='오른쪽 ‘펫’ 버튼을 누르면 펫 선택 화면으로 바로 이동합니다.';
+  $('prev').disabled=true;$('next').textContent='펫 선택으로 들어가기 →';message('');
+  document.querySelectorAll('[aria-current="step"]').forEach(b=>b.removeAttribute('aria-current'));$('mainEntry').setAttribute('aria-current','step');$('spots').replaceChildren();
+  const pet=hotspot('펫 선택 화면으로 이동',74,29,20.5,11.4,()=>go(lastPet));pet.classList.add('main-pet-button');pet.innerHTML=pawIcon+'<span>펫</span>';
+  if(equippedPet){const companion=hotspot('장착한 드래곤 펫 · 펫 선택 화면으로',26,53.5,14,8,()=>go(equippedPet.screen));companion.classList.add('equipped-pet');const sprite=document.createElement('img');sprite.src=shopAssets[equippedPet.asset];sprite.alt='장착한 드래곤 펫';companion.append(sprite);}
+  hotspot('캐릭터 선택 화면으로 이동',3,89,20,10,()=>go(-1));
+  hotspot('상점 · 펫 뽑기로 이동',3,20,15,8,()=>{shopTab='pet';go(-3)});
+  hotspot('게임 시작 · 펫 움직임 미리보기',60,78,36,20,()=>go(-5));
+  return;
+ }
+ if(i!==-2&&i!==-3){originalGo(i);updateGrowthPreview();return;}
+ current=i;$('phone').classList.remove('character');$('screen').src=i===-2?shopAssets.unowned:shopAssets.shop;
+ $('title').textContent=i===-2?'미보유 알 선택':'상점 · 뽑기';$('screen').alt=$('title').textContent;
+ $('counter').textContent=i===-2?'미보유':'상점';$('caption').textContent=i===-2?'미보유 알입니다. 아래 ‘뽑으러 가기’를 눌러 펫 뽑기로 이동하세요.':'일반 뽑기는 코인, 한정 뽑기는 젬 250개를 사용합니다. 한정 뽑기에서는 기간 한정 펫만 등장합니다.';
+ $('prev').disabled=false;$('next').textContent=i===-2?'펫 뽑기 상점으로 →':'미보유 알로 돌아가기 →';message('');
+ document.querySelectorAll('[aria-current="step"]').forEach(b=>b.removeAttribute('aria-current'));
+ $(i===-2?'unownedEntry':'shopEntry').setAttribute('aria-current','step');$('spots').replaceChildren();
+ if(i===-3){renderShop();return;}
+ const home=hotspot('홈 · 메인 화면으로',3,5,14,7,()=>go(-4));home.classList.add('switch-icon');home.textContent='⌂';home.style.fontSize='26px';
+ const character=hotspot('캐릭터 선택 화면으로 돌아가기',25,17.5,13,6.5,()=>go(-1));character.classList.add('switch-icon');character.innerHTML=catIcon;
+ const draw=hotspot('뽑으러 가기',30,84,40,10,()=>{shopTab='pet';go(-3)});draw.classList.add('unowned-draw');draw.textContent='뽑으러 가기';
+ hotspot('이전 알 보기',4,84,22,10,()=>go(0));hotspot('다음 알 보기',75,84,22,10,()=>go(0));
+};
+const originalRenderSpots=renderSpots;
+renderSpots=function(){originalRenderSpots();if(current===0){hotspot('미보유 알 보기',4,88,24,9,()=>go(-2));hotspot('다음 미보유 알 보기',73,88,24,9,()=>go(-2));}};
+$('unownedEntry').onclick=()=>go(-2);$('shopEntry').onclick=()=>{shopTab='pet';go(-3)};
+const originalNext=$('next').onclick,originalPrev=$('prev').onclick;
+$('next').onclick=()=>{if(current===-6)go(-5);else if(current>=1&&current<=5)advanceGrowth();else if(current===-5)jumpWithPet(gameMotion.direction===1?-1:1);else if(current===-4)go(lastPet);else if(current===-2){shopTab='pet';go(-3)}else if(current===-3)go(-2);else originalNext()};
+$('prev').onclick=()=>{if(current===-5||current===-6)go(-4);else if(current===-3)go(-2);else if(current===-2)go(-1);else originalPrev()};
+$('mainEntry').onclick=()=>go(-4);
+$('gameEntry').onclick=()=>go(-5);
+$('reset').onclick=()=>{lastPet=0;equippedPet=null;resetGrowthState();go(-4)};
+let gameMotion=null,gameFrame=0;
+const runningCat='<img src="'+shopAssets.gameCat+'" alt="캣점프 고양이">';
+function stopGameplay(){cancelAnimationFrame(gameFrame);gameFrame=0;}
+function safePetX(catX,direction){
+ const min=13,max=87,gap=14;
+ let desired=catX-direction*gap;
+ // When departing a wall, keep the companion inside until the trailing side has room.
+ if(desired<min)desired=catX+gap;
+ if(desired>max)desired=catX-gap;
+ return Math.max(min,Math.min(max,desired));
+}
+function paintGame(){
+ const m=gameMotion,cat=$('movingCat'),pet=$('followingPet');if(!cat||!pet)return;
+ cat.style.left=m.x+'%';cat.style.top=m.y+'%';
+ pet.style.left=m.petX+'%';pet.style.top=m.petY+'%';
+ cat.firstElementChild.style.transform='scaleX('+(-m.direction)+')';
+ // Supplied dragon sprites face right; turn toward the cat's current position.
+ if(Math.abs(m.x-m.petX)>.5)m.petFacing=m.x>m.petX?1:-1;
+ pet.firstElementChild.style.transform='scaleX('+(m.petFacing||1)+')';
+ $('playField').dataset.direction=m.direction;
+ $('playField').dataset.jumping=String(m.jumping);
+}
+function jumpWithPet(direction){
+ if(current!==-5||!gameMotion||gameMotion.jumping)return;
+ const m=gameMotion,target=direction===-1?14:86;
+ if(Math.abs(m.x-target)<1){$('gameStatus').textContent='반대쪽 점프 버튼을 눌러주세요.';return;}
+ m.jumping=true;m.direction=direction;
+ const from=m.x,start=performance.now();let last=start;
+ $('gameStatus').textContent=(direction===-1?'왼쪽':'오른쪽')+'으로 점프 · 펫은 고양이를 바라봐요';
+ document.querySelectorAll('.jump-button').forEach(b=>b.disabled=true);
+ const tick=now=>{
+  if(current!==-5)return;
+  const t=Math.min(1,(now-start)/900),ease=t*t*(3-2*t),dt=Math.min(50,now-last);last=now;
+  m.x=from+(target-from)*ease;m.y=59-19*Math.sin(Math.PI*t);
+  const targetPet=safePetX(m.x,direction);
+  m.petX+=(targetPet-m.petX)*(1-Math.exp(-dt/70));
+  m.petX=Math.max(13,Math.min(87,m.petX));
+  m.petY=m.y+2-(Math.abs(m.petX-m.x)<10?7:0);
+  paintGame();
+  if(t<1){gameFrame=requestAnimationFrame(tick);return;}
+  m.x=target;m.y=59;m.petX=safePetX(target,direction);m.petY=61;m.jumping=false;paintGame();
+  $('gameStatus').textContent=direction===-1?'왼쪽 벽 · 펫은 오른쪽 안쪽에':'오른쪽 벽 · 펫은 왼쪽 안쪽에';
+  document.querySelectorAll('.jump-button').forEach(b=>b.disabled=false);
+ };
+ gameFrame=requestAnimationFrame(tick);
+}
+function resetGameMotion(){
+ stopGameplay();gameMotion={x:50,y:59,petX:36,petY:61,direction:1,jumping:false};paintGame();
+ $('gameStatus').textContent='기본 위치 · 고양이 왼쪽에 펫';
+ document.querySelectorAll('.jump-button').forEach(b=>b.disabled=false);
+}
+function showGameplay(){
+ current=-5;$('phone').classList.remove('character','unowned','main-screen');
+ $('screen').src=shopAssets.main;$('screen').alt='인게임 펫 움직임 미리보기';
+ $('title').textContent='인게임 · 펫 따라오기';$('counter').textContent='움직임';
+ $('caption').textContent='좌우 점프로 방향 전환과 벽 안쪽 배치를 확인하세요. 실제 게임 물리와 분리된 위치 검토용입니다.';
+ $('prev').disabled=false;$('next').textContent='반대쪽으로 점프 ↔';message(equippedPet?'선택한 펫 외형으로 미리봅니다.':'장착 전에는 드래곤 펫으로 미리봅니다.');
+ document.querySelectorAll('[aria-current="step"]').forEach(b=>b.removeAttribute('aria-current'));$('gameEntry').setAttribute('aria-current','step');
+ $('spots').innerHTML='<div class="game-preview"><header><button id="gameHome" aria-label="메인으로 돌아가기">⌂</button><b>펫 따라오기</b><button id="gameReset">처음 위치</button></header><div id="playField" class="play-field"><div class="game-wall left-wall"></div><div class="game-wall right-wall"></div><div id="movingCat" class="moving-cat">'+runningCat+'</div><button id="followingPet" class="following-pet" aria-label="따라오는 펫 · 선택 화면으로"><img alt="따라오는 드래곤 펫" src="'+shopAssets[equippedPet?.asset||'adult']+'"></button></div><footer><div id="gameStatus" role="status"></div><div class="jump-controls"><button class="jump-button" id="jumpLeft">◀ 왼쪽 점프</button><button class="jump-button" id="jumpRight">오른쪽 점프 ▶</button></div><button id="gameEnd" class="game-end">게임 종료 · 결과 보기</button><p>펫은 항상 고양이 쪽을 바라보며,<br>벽에서는 항상 안쪽에 머물러요.</p></footer></div>';
+ $('playField').style.backgroundImage='url('+shopAssets.gameBackground+')';
+ $('gameEnd').onclick=finishGame;
+ $('gameHome').onclick=()=>go(-4);$('gameReset').onclick=resetGameMotion;
+ $('jumpLeft').onclick=()=>jumpWithPet(-1);$('jumpRight').onclick=()=>jumpWithPet(1);
+ $('followingPet').onclick=()=>go(equippedPet?.screen??lastPet);
+ resetGameMotion();
+}
+
+let incubating=false,growthPoints={1:20,3:20,4:20,5:20},resultMode='auto',resultState=null;
+$('phone').style.setProperty('--currency-sprite','url('+shopAssets.currencyIcons+')');
+function resetGrowthState(){incubating=false;growthPoints={1:20,3:20,4:20,5:20};resultMode='auto';resultState=null;}
+function hatchPet(){incubating=false;growthPoints[1]=6000;growthPoints[3]=20;go(3);message('알이 부화했어요. 선택하면 드래곤 펫을 장착합니다.');}
+function evolvePet(){
+ if(current<3||current>5||growthPoints[current]<6000)return;
+ const target=current+1;
+ if(equippedPet)equippedPet={screen:target,asset:target===4?'juvenile':'adult'};
+ if(target<=5)growthPoints[target]=20;
+ go(target);message(target===6?'최종 성장을 완료했어요. 원하는 외형을 골라보세요.':'진화했어요. 다음 성장을 이어갈 수 있습니다.');
+}
+function advanceGrowth(){
+ if(current===1){incubating=true;growthPoints[1]=6000;go(2);return;}
+ if(current===2){hatchPet();return;}
+ if(current>=3&&current<=5){if(growthPoints[current]>=6000)evolvePet();else{growthPoints[current]=6000;go(current);}}
+}
+function updateGrowthPreview(){
+ const stageButtons=[...document.querySelectorAll('#steps [data-stage],#steps [data-ready-stage]')];
+ const isReady=current>=3&&current<=5&&growthPoints[current]>=6000;
+ stageButtons.forEach((button,index)=>{
+  const selected=isReady?Number(button.dataset.readyStage)===current:Number(button.dataset.stage)===current;
+  button.toggleAttribute('aria-current',selected);
+  if(selected){button.setAttribute('aria-current','step');$('counter').textContent=(index+1)+' / '+stageButtons.length;}
+ });
+ if(current===1)incubating=true;
+ if(current===2){incubating=true;growthPoints[1]=6000;}
+ if(current<3||current>5)return;
+ const ready=growthPoints[current]>=6000;
+ $('next').textContent=ready?'진화하기 →':'성장 조건 달성으로 →';
+ if(!ready)return;
+ $('title').textContent='펫 '+(current-2)+'번 진화 가능';
+ $('caption').textContent='성장 포인트를 모두 모았어요. 아래 ‘진화하기’를 눌러 다음 단계로 성장하세요.';
+ const gauge=document.createElement('div');gauge.className='growth-complete';gauge.textContent='6000 / 6000';gauge.setAttribute('aria-label','성장 포인트 6000 / 6000');$('spots').append(gauge);
+ const ad=hotspot('성장 완료 · 광고 비활성',72,73.5,25,10.5,()=>{});ad.disabled=true;
+}
+function currentResultState(){
+ if(equippedPet){const stage=equippedPet.screen;if(stage>=6)return {kind:'complete',stage};return {kind:growthPoints[stage]>=6000?'evolve':'growth',stage};}
+ if(incubating)return {kind:growthPoints[1]>=6000?'hatch':'egg',stage:1};
+ return {kind:'none',stage:null};
+}
+function finishGame(){
+ stopGameplay();const state=currentResultState();
+ if(state.stage!==null&&state.stage<6)growthPoints[state.stage]=Math.min(6000,growthPoints[state.stage]+6);
+ resultMode='auto';go(-6);
+}
+function chooseResultScenario(mode){
+ resultMode=mode;
+ if(mode==='none'){equippedPet=null;incubating=false;}
+ if(mode==='hatch'){equippedPet=null;incubating=true;growthPoints[1]=6000;}
+ if(mode==='growth'||mode==='evolve'){
+  const stage=equippedPet&&equippedPet.screen>=3&&equippedPet.screen<=5?equippedPet.screen:3;
+  incubating=false;equippedPet={screen:stage,asset:stage===3?'baby':stage===4?'juvenile':'adult'};growthPoints[stage]=mode==='evolve'?6000:6;
+ }
+ if(mode==='complete'){incubating=false;equippedPet={screen:6,asset:'adult'};}
+ go(-6);
+}
+function openResultPet(){
+ if(!resultState||resultState.kind==='none')return;
+ go(resultState.kind==='hatch'?2:resultState.stage);
+}
+function showGameResult(){
+ current=-6;resultState=currentResultState();const pet=resultState.kind!=='none';
+ $('phone').classList.remove('character','unowned','main-screen');$('screen').src=pet?shopAssets.resultPet:shopAssets.resultDefault;
+ $('screen').alt=pet?'게임오버 · 드래곤 펫 성장 결과':'게임오버 · 기본 결과';
+ $('title').textContent='게임오버 · '+(resultState.kind==='hatch'?'부화 가능':resultState.kind==='evolve'?'진화 가능':resultState.kind==='none'?'기본 결과':resultState.kind==='complete'?'최종 성장 완료':'경험치 진행도');$('counter').textContent='결과';
+ $('caption').textContent=pet?'펫 결과 카드를 누르면 해당 펫의 부화·성장 상태를 확인할 수 있습니다.':'펫을 장착하지 않은 기본 결과 화면입니다.';
+ $('prev').disabled=false;$('next').textContent='다시 플레이 →';message('');
+ document.querySelectorAll('[aria-current="step"]').forEach(b=>b.removeAttribute('aria-current'));$(resultState.kind==='hatch'?'resultHatchEntry':resultState.kind==='evolve'?'resultEvolveEntry':'resultEntry').setAttribute('aria-current','step');
+ $('resultDemo').hidden=false;$('resultScenario').value=resultMode;$('spots').replaceChildren();
+ if(pet){
+  const card=hotspot('드래곤 펫 성장 결과 · 펫 선택으로',45.2,56.1,41.8,20.5,openResultPet);card.classList.add('result-pet-card');
+  const ready=resultState.kind==='hatch'||resultState.kind==='evolve';
+  const status=resultState.kind==='hatch'?'부화 가능':resultState.kind==='evolve'?'진화 가능':resultState.kind==='complete'?'최종 성장 완료':null;
+  const points=growthPoints[resultState.stage]||0;
+  const level=levelForScreen(resultState.stage);
+  card.innerHTML='<span class="result-pet-portrait" data-pet-level="'+level+'"><img src="'+(level===0?shopAssets.baby:dragonIllustration(level))+'" alt="드래곤 '+Math.max(1,level)+'단계 모습"></span><span class="result-pet-name">드래곤 펫</span><span class="result-xp-label">'+pawIcon+' 펫 경험치</span>'+(status?'<span class="result-pet-status '+(ready?'ready':'complete')+'">'+status+'</span>':'<span class="result-xp-track"><span style="width:'+Math.max(1,points/6000*100)+'%"></span><b>'+points+'/6000M</b></span>');
+ }
+ hotspot('게임오버 · 홈으로',12,pet?82.5:81.5,24,9,()=>go(-4));
+ hotspot('게임오버 · 재시작',41,pet?82.5:81.5,50,9,()=>go(-5));
+}
+$('resultEntry').onclick=()=>chooseResultScenario('growth');
+$('resultHatchEntry').onclick=()=>chooseResultScenario('hatch');
+$('resultEvolveEntry').onclick=()=>chooseResultScenario('evolve');
+$('resultScenario').onchange=e=>chooseResultScenario(e.target.value);
+document.querySelectorAll('#steps [data-stage]').forEach(button=>{
+ const stage=Number(button.dataset.stage);
+ if(stage===1)button.onclick=()=>{growthPoints[1]=20;go(1)};
+ if(stage<3||stage>5)return;
+ button.onclick=()=>{growthPoints[stage]=20;go(stage)};
+ const readyButton=document.createElement('button');readyButton.className='step';readyButton.dataset.readyStage=stage;
+ readyButton.innerHTML='<span></span>펫 '+(stage-2)+'번 진화 가능';
+ readyButton.onclick=()=>{growthPoints[stage]=6000;go(stage)};
+ button.after(readyButton);
+});
+document.querySelectorAll('#steps [data-stage],#steps [data-ready-stage]').forEach((button,index)=>button.querySelector('span').textContent=index+1);
+
+const collectionGroups=['즐겨찾기 펫','일반 펫','스페셜 펫','전설 펫','기간 한정 펫'];
+const petCatalog=[
+ {id:'rabbit',name:'토끼 펫',group:'일반 펫',portrait:0},
+ {id:'cat',name:'고양이 펫',group:'일반 펫',portrait:1},
+ {id:'hamster',name:'햄스터 펫',group:'일반 펫',portrait:2},
+ {id:'dog',name:'강아지 펫',group:'스페셜 펫',portrait:3},
+ {id:'tiger',name:'백호 펫',group:'스페셜 펫',portrait:5},
+ {id:'dragon',name:'드래곤 펫',group:'전설 펫',portrait:4,owned:true,level:0,screen:0},
+ ...limitedPets.map((pet,index)=>({id:'limited-'+index,name:pet.name,group:'기간 한정 펫',portrait:index}))
+];
+const favoritePets=new Set();
+let collectionSelected='dragon';
+function levelForScreen(stage){return stage>=5?3:stage===4?2:stage===3?1:0;}
+function dragonIllustration(level){return shopAssets[level===0?'egg':level===1?'baby':level===2?'juvenile':'adult'];}
+function syncCollectionState(stage){
+ const dragon=petCatalog.find(p=>p.id==='dragon');
+ if(stage>=0&&stage<=8){dragon.owned=true;dragon.level=levelForScreen(stage);dragon.screen=stage;}
+ else if(stage===-2){dragon.owned=false;dragon.level=0;favoritePets.delete('dragon');}
+ else if(stage===-6&&resultState?.stage!==null&&resultState?.stage!==undefined){dragon.owned=true;dragon.level=levelForScreen(resultState.stage);dragon.screen=resultState.stage;}
+}
+function collectionIcon(pet){
+ const level=pet.owned?pet.level:1;
+ if(pet.portrait===4)return '<img src="'+(pet.owned?dragonIllustration(level):shopAssets.baby)+'" alt="'+pet.name+' '+(pet.owned&&level===0?'알':level+'단계 모습')+'">';
+ return '<span class="collection-atlas" role="img" aria-label="'+pet.name+' 1단계 모습" style="background-image:url('+shopAssets.limitedIcons+');background-position:'+(pet.portrait%3*50)+'% '+(Math.floor(pet.portrait/3)*100)+'%"></span>';
+}
+function collectionCard(pet){
+ const level=pet.owned?pet.level:0;
+ return '<div class="collection-item"><button class="collection-pet '+(pet.owned?'owned':'unowned')+'" data-pet-id="'+pet.id+'" aria-label="'+pet.name+' · '+(pet.owned?level===0?'알 보유':level+'단계 보유':'미보유 · 1단계 미리보기')+'" aria-pressed="'+(collectionSelected===pet.id)+'"><span class="collection-portrait" data-pet-level="'+level+'">'+collectionIcon(pet)+'</span></button></div>';
+}
+function paintCollection(){
+ const scrollTop=$('infoText').scrollTop;
+ const owned=petCatalog.filter(p=>p.owned).length;
+ $('infoText').innerHTML='<div class="collection-count">보유 펫 <b>'+owned+' / '+petCatalog.length+'</b></div>'+collectionGroups.map((group,index)=>{
+  const pets=index===0?petCatalog.filter(p=>favoritePets.has(p.id)):petCatalog.filter(p=>p.group===group);
+  return '<section class="collection-section" id="collection-group-'+index+'"><h4>'+group+'<small>'+pets.filter(p=>p.owned).length+' / '+pets.length+'</small></h4><div class="collection-grid">'+(pets.length?pets.map(collectionCard).join(''):'<div class="collection-empty" aria-label="등록된 즐겨찾기 펫 없음"></div>')+'</div></section>';
+ }).join('');
+ $('infoText').scrollTop=scrollTop;
+ $('infoText').querySelectorAll('[data-pet-id]').forEach(button=>button.onclick=()=>{
+  collectionSelected=button.dataset.petId;
+  $('infoText').querySelectorAll('[data-pet-id]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.petId===collectionSelected));
+ });
+}
+function openCollection(event,favoritesOnly=false){
+ infoOpener=event?.currentTarget||$('collectionEntry');
+ $('infoOverlay').classList.add('pet-rates','pet-collection');$('infoTitle').textContent='펫 컬렉션';
+ $('infoConfirm').onclick=null;
+ $('infoOverlay').hidden=false;infoBackground(true);paintCollection();
+ $('infoText').scrollTop=0;
+ if(favoritesOnly)$('collection-group-0').scrollIntoView({block:'nearest'});
+ $('infoClose').focus();
+}
+const goBeforeCollection=go;
+go=function(stage){goBeforeCollection(stage);syncCollectionState(stage);};
+$('collectionEntry').onclick=openCollection;
+const resetBeforeCollection=$('reset').onclick;
+$('reset').onclick=()=>{favoritePets.clear();const dragon=petCatalog.find(p=>p.id==='dragon');dragon.owned=true;dragon.level=0;dragon.screen=0;resetBeforeCollection();};
+
+go(-4);
+</script>
+<style>
+.phone{container-type:inline-size}.phone.unowned{width:min(100%,calc((100dvh - 225px) * .5625))}.hot.unowned-draw,.phone.hints .hot.unowned-draw{background:#fff9e7;border:3px solid #6d3027;border-radius:15px;box-shadow:inset 0 4px white,inset 0 -5px #ebbea0;color:#aa252b;font-size:6cqw;font-weight:900;line-height:1.3;text-shadow:1px 1px white}
+.shop-panel{position:absolute;left:2.3%;right:2.3%;top:33%;bottom:7%;display:flex;flex-direction:column;padding:3%;gap:2%;background:#ffe4ce;border:4px solid #af49cf;border-radius:5%;box-shadow:inset 0 0 0 3px #fba9fc,0 5px #48204f;line-height:1.3;color:#651e29}
+.draw-hero{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #fff9f0;border-radius:8%;background:repeating-conic-gradient(from 10deg,#ffe7aa 0deg 25deg,#ecc3ff 25deg 50deg,#c8fff0 50deg 75deg);box-shadow:inset 0 0 22px white}.draw-hero img{image-rendering:pixelated;object-fit:contain;width:auto;position:absolute}.draw-hero .hero-egg{height:57%;left:43%;top:22%;z-index:2;filter:drop-shadow(0 5px 0 #80597055)}.draw-hero .baby{height:25%;left:9%;bottom:23%}.draw-hero .adult{height:47%;right:4%;bottom:24%}.hero-label{position:absolute;bottom:5%;padding:3px 12px;background:#5c287dcc;border:1px solid white;border-radius:15px;color:white;font-size:3.4cqw}.hero-spark{position:absolute;font-size:10cqw;color:#fffcea;text-shadow:0 0 6px #f437ec}.spark-one{left:8%;top:8%}.spark-two{right:7%;top:8%;color:#fff58d}.mystery-box{display:grid;place-items:center;width:52%;aspect-ratio:1;border:7px ridge #ffd828;border-radius:12%;background:repeating-conic-gradient(#fff6e4 0% 25%,#ffe1a0 0% 50%) 0/24px 24px;color:#fca900;font:bold 32cqw/1 sans-serif;text-shadow:3px 3px #a04c00;box-shadow:0 4px #5c321c}
+.draw-description{position:relative;flex:0 0 17%;display:flex;flex-direction:column;justify-content:center;text-align:center;border:2px solid #ffc5f1;border-radius:12px;background:linear-gradient(#b95cca,#69307a);box-shadow:0 2px #9c568b;padding:6px}.draw-description h3{margin:0;color:#fff9e8;text-shadow:2px 2px #6f192b;font-size:6cqw;line-height:1.3}.draw-description p{margin:5px 0 0;color:#fff15b;font-size:3.4cqw;font-weight:bold}.draw-purchases{flex:0 0 18%;display:flex;gap:5%;padding:0 2%}.purchase-wrap{position:relative;flex:1;min-width:0}.purchase{width:100%;height:100%;border:3px solid #633843;border-radius:19%;box-shadow:inset 0 4px #fff9ed,inset 0 -5px #9e54b9,0 3px #a36850;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;font-size:4cqw;text-shadow:1px 1px #4c1734;background:#ce86f4}.purchase b{color:#fffa82;font-size:4cqw}.purchase strong{font-size:6cqw;line-height:1.15}.purchase small{font-size:2.7cqw}.coin-draw{background:#ffdb6c;box-shadow:inset 0 4px #fff9ed,inset 0 -5px #e39739,0 3px #a36850;color:#552d26;text-shadow:none}.coin-draw b{color:#692f29}.multi-draw{background:#00cdd1;box-shadow:inset 0 4px #fff9ed,inset 0 -5px #009b9d,0 3px #a36850}.currency-coin{display:inline-grid;place-items:center;width:1.1em;height:1.1em;background:#ffbd00;border:2px solid #a35b00;border-radius:50%;color:#fff27a;font-size:.8em}.currency-gem{color:#ff85ba;text-shadow:1px 2px #7a1240}
+.draw-info{position:absolute;right:-3%;top:-6%;width:6.7cqw;height:6.7cqw;border:2px solid #672f20;border-radius:30%;background:#ff9d00;color:white;font:bold 4.6cqw/1 sans-serif;box-shadow:inset 0 2px #ffdf82;z-index:2}.existing-info{right:0;top:-10%}.draw-tabs{flex:0 0 10%;display:flex;gap:8px;background:#b3a5b6;margin:0 -1%;padding:5px;border-radius:7px}.draw-tabs button{flex:1;border:2px solid #76647b;border-radius:6px;background:#e0d4e4;color:#5a405b;font-size:3.8cqw;font-weight:bold}.draw-tabs button[aria-selected=true]{background:#ffcf2d;color:#62232c;border-color:#a25a1f;box-shadow:inset 0 3px #fff4a4}.purchase:hover,.draw-tabs button:hover{filter:brightness(1.08)}
+.rate-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rate-card{text-align:center;border:2px solid #8c4e48;border-radius:9px;background:#ffd3b4;padding:8px 2px;font-size:12px}.rate-symbol{border:2px solid #faffdb;border-radius:7px;background:#fff3a3;color:#bd793d;height:48px;display:grid;place-items:center;font-size:17px}.rarity-1 .rate-symbol{background:#ff8eaa;color:#8d1944}.rarity-2 .rate-symbol{background:#d6a2ff;color:#632d94}.rate-card b{display:block;margin:8px 0}.rate-card strong{display:block;background:#542b27;color:#fff7d9;padding:3px;border-radius:3px}.info-text .rate-note{margin:20px 0;font-size:13px}.info-sheet:has(.rate-grid) h3{font-size:20px}
+@media(max-width:720px){.phone.unowned{width:min(100%,360px)}}
+.draw-hero .pet-draw-banner{position:static;display:block;width:100%;height:100%;object-fit:cover;object-position:center;image-rendering:auto}
+.pet-rates .info-sheet{width:94%;height:73%;padding:14px 12px;border:3px solid #69402e;border-radius:14px;background:#fff3db;box-shadow:inset 0 0 0 3px #ffdfb6,0 5px #492925}.pet-rates .info-sheet header{margin-bottom:18px}.pet-rates .info-sheet h3{font-size:5.5cqw;font-weight:bold;color:#873e27}.pet-rates .info-text{padding:12px 8px;background:#f1f1ef;border:2px solid #a69b92;border-radius:10px}.pet-rate-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}.pet-rate-card{min-width:0;padding:6px 4px;border:2px solid #8b8b87;border-radius:7px;background:#dcdcd8;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}.pet-portrait{width:80%;aspect-ratio:1;border:3px solid #369b39;outline:1px solid #264d21;border-radius:9px;background:linear-gradient(135deg,#fff6ad 15%,#242638 16%,#343348 80%,#fff6ad 81%);box-shadow:inset 0 0 0 2px #fff2a6;display:grid;place-items:center;overflow:hidden}.phone .pet-portrait img{width:95%;height:95%;object-fit:contain;image-rendering:pixelated}.pet-rarity{display:block;width:100%;font-size:3.5cqw;line-height:1.5;font-weight:normal;white-space:nowrap}.pet-rarity.special,.pet-rarity.legend,.pet-rarity.limited{font-weight:bold;border-radius:8px;color:#fffbed;text-shadow:1px 1px #6d2022,-1px -1px #6d2022;box-shadow:inset 0 2px #fff7d8,0 2px #814235}.pet-rarity.special{background:linear-gradient(#daa2ff 40%,#a134f3 41%)}.pet-rarity.legend{background:linear-gradient(#ff94b0 40%,#f83264 41%)}.pet-rarity.limited{background:linear-gradient(#ffe97e 40%,#ffb411 41%)}.pet-percent{width:100%;background:#242424;color:white;border:2px solid #111;border-radius:6px;font:bold 5cqw/1.5 sans-serif}.pet-rate-card small{font-size:2.5cqw;color:#57504a;line-height:1.4}.pet-rates .rate-note{font-size:3.3cqw;margin:16px 2px}.info-text .rate-example{font-size:3cqw;line-height:1.7;color:#80684e;margin:12px 2px}.pet-rates .info-confirm{width:100%;font-size:5cqw;border-radius:12px;border:2px solid #874c32;background:#fff97d;box-shadow:inset 0 3px white,0 3px #e8a75d;color:#6e3026}
+</style>
+<style>
+/* Cat Jump probability panel: cream stitched frame, salmon cards and pixel bevels. */
+.pet-rates{background:#000b}
+.pet-rates .info-sheet{position:absolute;top:22%;bottom:8%;height:auto;width:92%;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;gap:12px}
+.pet-rates .info-sheet header{height:9cqw;min-height:9cqw;margin:0;display:flex;align-items:center;justify-content:center}
+.pet-rates .info-sheet h3{font-size:6cqw;font-weight:900;color:#ffef4d;text-shadow:2px 2px #651b10,-2px -2px #651b10,2px -2px #651b10,-2px 2px #651b10,0 3px #2e100a}
+.pet-rates .info-sheet header button{right:0;top:0;width:10cqw;height:10cqw;background:#47211b;color:#ff9ba8;border:3px solid #fce2bf;outline:2px solid #3a160f;border-radius:0;box-shadow:inset 0 0 0 3px #7e4930;font:bold 10cqw/.7 sans-serif;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
+.pet-rates .info-text{flex:1;min-height:0;background:#ddaa86;border:8px solid #fff0cf;border-radius:8px;padding:14px 11px;outline:2px dashed #603529;outline-offset:-5px;box-shadow:inset 3px 3px #b57b51,inset -3px -3px #fffbea,0 3px #6c3224,0 6px #29131a;scrollbar-width:thin;scrollbar-color:#aa7656 #e6bc97}
+.pet-rate-grid,.pet-rates .rate-grid{gap:14px 10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.pet-rate-card,.pet-rates .rate-card{padding:6px 5px 5px;gap:6px;background:#ff999f;border:2px solid #633323;border-radius:0;box-shadow:inset 0 0 0 3px #fff8dd,0 2px #77412c;clip-path:polygon(8px 0,calc(100% - 8px) 0,calc(100% - 8px) 3px,100% 3px,100% calc(100% - 6px),calc(100% - 5px) calc(100% - 6px),calc(100% - 5px) 100%,5px 100%,5px calc(100% - 4px),0 calc(100% - 4px),0 5px,8px 5px)}
+.pet-portrait,.pet-rates .rate-symbol{width:100%;height:auto;aspect-ratio:1;outline:none;border:3px solid #fffbe9;border-radius:7px;background:repeating-linear-gradient(0deg,#ffe787 0 7px,#fff09c 7px 14px);box-shadow:0 0 0 2px #a56c40,inset 0 0 0 2px #fff7c3;margin:3px 0 0}
+.phone .pet-portrait img{width:97%;height:97%;filter:drop-shadow(1px 2px 0 #74462d)}
+.pet-rarity{font-size:3.7cqw;line-height:1.4;font-weight:bold;color:#fff5dd;text-shadow:1px 1px #683228,-1px -1px #683228,1px -1px #683228,-1px 1px #683228}
+.pet-rarity.special,.pet-rarity.legend,.pet-rarity.limited{border-radius:2px;box-shadow:inset 0 2px #fff2cc,0 2px #9f453b}
+.pet-percent,.pet-rates .rate-card strong{width:100%;padding:1px 0;border:3px solid #54210f;border-radius:0;background:#090504;color:#fff8dc;font:900 6cqw/1.2 'Courier New',monospace;letter-spacing:-1px;text-shadow:1px 1px #a77255;clip-path:polygon(5px 0,calc(100% - 5px) 0,calc(100% - 5px) 3px,100% 3px,100% calc(100% - 3px),calc(100% - 5px) calc(100% - 3px),calc(100% - 5px) 100%,5px 100%,5px calc(100% - 3px),0 calc(100% - 3px),0 3px,5px 3px)}
+.pet-rates .info-text .rate-note{font-size:3.2cqw;line-height:1.75;margin:16px 0 2px;color:#542b20;font-weight:bold;word-break:keep-all}
+.pet-rates .info-confirm{margin:0 2%;width:96%;padding:9px 6px;min-height:12cqw;border:3px solid #753b2b;border-radius:0;background:#ffff83;box-shadow:inset 0 4px #fffde9,inset 0 -5px #ffba77,0 4px #5d2c23;color:#fff9e4;font-weight:900;font-size:6cqw;line-height:1.3;text-shadow:2px 2px #702c22,-2px -2px #702c22,2px -2px #702c22,-2px 2px #702c22;clip-path:polygon(7% 0,93% 0,93% 4%,97% 4%,97% 13%,100% 13%,100% 85%,97% 85%,97% 94%,93% 94%,93% 100%,7% 100%,7% 94%,3% 94%,3% 85%,0 85%,0 13%,3% 13%,3% 4%,7% 4%)}
+</style>
+<style>
+.limited-portrait{display:block;width:100%;height:100%;background-size:300% 200%;background-repeat:no-repeat;image-rendering:pixelated}
+.pet-rate-card:has(.limited-portrait) small{font-size:3.1cqw;font-weight:bold;line-height:1.2;color:#602c25;white-space:nowrap}
+.pet-rate-card:has(.limited-portrait){gap:4px}
+.pet-rate-card:has(.limited-portrait) .pet-portrait{width:88%;flex-shrink:0}
+.pet-rates .info-sheet:has(.limited-portrait){top:20%;bottom:6%}
+</style>
+<style>
+.phone.main-screen{width:min(100%,calc((100dvh - 225px) * .529))}
+.hot.main-pet-button,.phone.hints .hot.main-pet-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;background:#fff28c;border:3px solid #61332d;border-radius:25%;box-shadow:inset 0 4px #fffce7,inset 0 -5px #f3b16b,0 3px #763d32;color:#fff8dd;padding:5px;line-height:1}
+.main-pet-button svg{width:65%;height:65%;flex-shrink:0;filter:drop-shadow(1px 2px 0 #bb693d);pointer-events:none}
+.main-pet-button span{font-size:5cqw;font-weight:900;color:#fffbe6;text-shadow:1px 1px #8f2827,-1px -1px #8f2827,1px -1px #8f2827,-1px 1px #8f2827}
+.hot.main-pet-button:hover{filter:brightness(1.08)}
+.hot.equipped-pet{display:flex;align-items:flex-end;justify-content:center;border:0;line-height:0;overflow:visible}
+.phone .equipped-pet img{width:100%;height:100%;object-fit:contain;object-position:center bottom;image-rendering:pixelated;filter:drop-shadow(1px 2px 0 #3338);pointer-events:none}
+@media(max-width:720px){.phone.main-screen{width:min(100%,360px)}}
+</style>
+<style>
+.game-preview{position:absolute;inset:0;background:#171a2d;display:flex;flex-direction:column;line-height:1.5;color:#fff1cf}
+.game-preview header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 10px;background:#473c4e;border-bottom:4px solid #171b2b;font-size:4.5cqw}
+.game-preview header button{border:2px solid #654133;background:#fff18c;color:#7b302f;border-radius:8px;padding:6px;font-weight:bold;font-size:3.5cqw}
+.play-field{position:relative;flex:1;min-height:0;overflow:hidden;background-color:#be8b78;background-image:linear-gradient(335deg,#d5ae97 23px,transparent 23px),linear-gradient(155deg,#d5ae97 23px,transparent 23px),linear-gradient(335deg,#d5ae97 23px,transparent 23px),linear-gradient(155deg,#d5ae97 23px,transparent 23px);background-size:58px 58px;background-position:0 2px,4px 35px,29px 31px,33px 6px}
+.game-wall{position:absolute;top:0;bottom:0;width:5%;background:repeating-linear-gradient(#747c89 0 30px,#a1a4ac 30px 33px,#394353 33px 37px);border:2px solid #242d39;z-index:3}.left-wall{left:0}.right-wall{right:0}
+.game-window{position:absolute;top:8%;width:22%;height:20%;border:6px solid #ded0b4;background:repeating-linear-gradient(0deg,#a2b9b3 0 20px,#c4c5b0 20px 24px);box-shadow:0 0 0 4px #766d6c,inset 0 0 0 4px #828f8f}.window-one{left:19%}.window-two{right:19%}.game-floor{position:absolute;bottom:12%;left:5%;right:5%;height:5%;background:#949fb5;border-bottom:6px solid #705955;box-shadow:0 6px #e0b89e}
+.moving-cat,.following-pet{position:absolute;transform:translate(-50%,-50%);z-index:4;will-change:left,top}
+.moving-cat{width:10%;height:13%;display:flex;align-items:center}.moving-cat svg{width:100%;height:100%;overflow:visible}
+.following-pet{width:9%;height:10%;border:0;padding:0;background:transparent;line-height:0;cursor:pointer}
+.phone .following-pet img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.game-preview footer{padding:12px 10px 16px;background:#26283d;border-top:4px solid #4c4f69}
+#gameStatus{text-align:center;font-size:3.7cqw;color:#ffefb5;margin:0 0 10px;min-height:1.5em}
+.jump-controls{display:flex;gap:10px}.jump-button{flex:1;padding:12px 3px;border:3px solid #7c4c32;border-radius:10px;background:#fff28e;color:#872e32;box-shadow:inset 0 3px white,inset 0 -4px #efa86a;font-size:4cqw;font-weight:bold}
+.game-preview footer p{font-size:3.2cqw;text-align:center;color:#c6c6d8;margin:10px 0 0}
+</style>
+<style>
+.game-preview{background:#17182b}
+.game-preview header{position:absolute;top:15%;left:10%;right:10%;z-index:6;padding:0;background:transparent;border:0;pointer-events:none}
+.game-preview header b{display:none}.game-preview header button{pointer-events:auto;background:#fff490;box-shadow:inset 0 2px #fffbe9,inset 0 -3px #e49d68;font-size:3cqw;padding:4px 8px;border-radius:6px}
+.play-field{flex:0 0 72%;background-color:#94736c;background-size:100% auto;background-position:center top;background-repeat:no-repeat}
+.game-wall{width:8%;border:0;background:transparent;pointer-events:none}
+.moving-cat{width:12%;height:14%;justify-content:center}
+.phone .moving-cat img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.following-pet{width:9%;height:11%}
+.game-preview footer{flex:1;border-top:4px solid #49455b;background:#17182b;display:flex;flex-direction:column;justify-content:center;padding:12px 14px}
+.jump-button{border-radius:5px;background:#ffff92;border-color:#754332;box-shadow:inset 0 4px #fffde1,inset 0 -5px #ffb175;color:#b53636;text-shadow:1px 1px #fff7df;padding:12px 3px}
+</style>
+<style>
+.phone.main-screen{clip-path:inset(1.4% 2.5%);border-radius:0}
+</style>
+<style>
+.currency-coin,.currency-gem{display:inline-block;vertical-align:-.15em;width:1.12em;height:1.12em;border:0;border-radius:0;background-color:transparent;background-image:var(--currency-sprite);background-repeat:no-repeat;box-shadow:none;text-shadow:none;image-rendering:pixelated}
+.currency-coin{font-size:1em;background-size:805.56% 189.47%;background-position:3.94% 44.12%;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
+.currency-gem{background-size:725% 180%;background-position:66.4% 43.75%;clip-path:polygon(24% 0,76% 0,100% 38%,100% 58%,50% 100%,0 58%,0 38%)}
+.result-demo[hidden]{display:none}.result-demo{margin:0 0 12px;color:#bac2d5;font-size:12px;display:flex;align-items:center;gap:8px}.result-demo select{padding:7px;background:#262c40;border:1px solid #66708a;border-radius:6px;color:white;font:inherit}
+.phone.result-screen{width:min(100%,calc((100dvh - 250px) * .458));border-radius:0;clip-path:inset(.7% .6%)}
+.hot.result-pet-card,.phone.hints .hot.result-pet-card{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:3px;background:#f0f0ee;border:2px solid #888;border-radius:8px;box-shadow:none;padding:7px 5px;color:#191919;line-height:1.3;font-weight:normal}
+.result-pet-portrait{display:grid;place-items:center;width:49%;aspect-ratio:1;min-height:0;border:3px solid #32d543;outline:1px solid #1e5925;box-shadow:inset 0 0 0 2px #ffeab0;background:#282536;border-radius:8px;overflow:hidden}
+.phone .result-pet-portrait img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.result-pet-name{font-size:3cqw}.result-xp-label{display:flex;align-items:center;justify-content:center;gap:4px;font-size:3.6cqw}.result-xp-label svg{width:5cqw;height:5cqw}
+.result-pet-status,.result-xp-track{width:100%;height:5cqw;min-height:14px;border:2px solid #999;border-radius:3px;position:relative;font-size:3.5cqw;line-height:1.15;color:#101010}
+.result-pet-status{background:#ffd334}.result-pet-status.complete{background:#f4dc7c;font-size:3cqw}.result-xp-track{background:#aaa;overflow:hidden}.result-xp-track>span{position:absolute;inset:0 auto 0 0;background:#ffe735}.result-xp-track b{position:relative;font-weight:normal;font-size:2.9cqw}
+.hot.evolve-action,.phone.hints .hot.evolve-action{display:grid;place-items:center;background:#fffae5;border:3px solid #82402c;border-radius:15%;box-shadow:inset 0 4px white,inset 0 -5px #e5b590;color:#b52a28;text-shadow:1px 1px #fda79b;font-size:7cqw;font-weight:900;line-height:1}
+.growth-complete{position:absolute;left:5%;top:80%;width:63%;height:2.5%;display:grid;place-items:center;background:#ffdc26;border:2px solid #6c3d16;color:#fff;font:bold 3.5cqw/1 sans-serif;text-shadow:1px 1px #3c1c00,-1px -1px #3c1c00}
+.game-end{margin-top:8px;background:#ffdd8c;color:#683034;border:2px solid #996348;border-radius:6px;font-size:3.4cqw;padding:5px;font-weight:bold}.game-preview footer:has(.game-end) p{display:none}
+@media(max-width:720px){.phone.result-screen{width:min(100%,360px)}}
+</style>
+<style>.pet-collection .info-sheet{top:17%;bottom:7%;width:93%;gap:10px}
+.pet-collection .info-sheet h3{color:#ff9ca7;font-size:8cqw;text-shadow:2px 2px #721f19,-2px -2px #721f19,2px -2px #721f19,-2px 2px #721f19,0 4px #431a17;letter-spacing:-1px}
+.pet-collection .info-text{padding:12px 10px;background:#e7ad83;border:9px solid #fff0cd;border-radius:3px;outline:3px dashed #6f3325;outline-offset:-6px;box-shadow:inset 4px 4px #b16b43,inset -4px -4px #ffdbb2,0 0 0 3px #753627,0 6px #38151a;scrollbar-color:#f46a80 #95573d;scrollbar-width:thin}
+.collection-count{font-size:3.4cqw;color:#74402c;display:flex;justify-content:flex-end;gap:8px;margin:0 1px 9px}
+.collection-count b{background:#bb7f5b;color:#fff3d2;border:2px solid #8b4e33;padding:0 4px;font-family:monospace;text-shadow:1px 1px #48241b}
+.collection-section{border-bottom:3px solid #e87478;box-shadow:0 2px #ffe4b8;padding-bottom:16px;margin-bottom:16px}
+.collection-section:last-child{border-bottom:0;box-shadow:none;margin-bottom:0;padding-bottom:4px}
+.collection-section h4{margin:0 0 13px;background:linear-gradient(#252017 0 3px,#090806 3px calc(100% - 3px),#45231a calc(100% - 3px));color:#fff336;padding:7px 9px;font-size:4.5cqw;font-weight:800;line-height:1.3;text-shadow:1px 2px #834b00;display:flex;justify-content:space-between;align-items:center;clip-path:polygon(6px 0,calc(100% - 6px) 0,100% 6px,100% calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,0 calc(100% - 6px),0 6px)}
+.collection-section h4 small{font-size:3.4cqw;font-weight:normal}
+.collection-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 10px;padding:2px}
+.collection-item{position:relative;min-width:0}
+.collection-pet{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;border:0;padding:0;background:transparent;color:#442519;font:inherit;line-height:1.3}
+.collection-portrait{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:1;box-sizing:border-box;background:repeating-linear-gradient(0deg,#ffd557 0 5px,#ffed99 5px 10px);border-radius:2px;overflow:hidden}
+.phone .collection-portrait img{width:90%;height:90%;object-fit:contain;image-rendering:pixelated}
+.collection-atlas{display:block;width:100%;height:100%;background-size:300% 200%;background-repeat:no-repeat;image-rendering:pixelated}
+.collection-pet.unowned .collection-portrait{filter:grayscale(1) brightness(.6);background:#aaa}
+.collection-pet[aria-pressed=true]{filter:brightness(1.12)}
+.collection-pet:focus-visible{outline:2px solid #75362e;outline-offset:3px}
+.pet-collection .collection-empty{grid-column:1/-1;height:12px}
+.pet-collection .info-confirm{display:none}
+.phone [data-pet-level]{outline:none;border-radius:5px;box-sizing:border-box}
+.phone [data-pet-level="0"]{border:0;box-shadow:none}
+.phone [data-pet-level="1"]{border:3px solid #bc743e;box-shadow:inset 0 0 0 2px #ffd5a1,0 0 0 1px #6b3d24}
+.phone [data-pet-level="2"]{border:3px solid #c0cad6;box-shadow:inset 0 0 0 2px #f8ffff,0 0 0 1px #56616e}
+.phone [data-pet-level="3"]{border:3px solid #f3bc22;box-shadow:inset 0 0 0 2px #fff4a3,0 0 0 1px #986522}
+.pet-collection .collection-portrait[data-pet-level="1"]{border:6px solid;border-color:#ffce96 #b56937 #854622 #da9559;box-shadow:inset 0 0 0 2px #ffe7bd,0 0 0 2px #60321f,0 3px #60321f;border-radius:2px}
+.pet-collection .collection-portrait[data-pet-level="2"]{border:6px solid;border-color:#f8ffff #9baec4 #596d86 #d9e6ef;box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #3e5067,0 3px #3e5067;border-radius:2px}
+.pet-collection .collection-portrait[data-pet-level="3"]{border:6px solid;border-color:#fff7a0 #e9a516 #a7620d #ffda35;box-shadow:inset 0 0 0 2px #fff7b2,0 0 0 2px #744013,0 3px #744013;border-radius:2px}
+.pet-collection .collection-portrait:not([data-pet-level="0"])::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(#fff8cf,#fff8cf) left top/7px 2px no-repeat,linear-gradient(#fff8cf,#fff8cf) left top/2px 7px no-repeat,linear-gradient(#61351b,#61351b) right bottom/6px 2px no-repeat}
+</style>
+<style>.incubator-price{position:absolute;left:31%;top:78%;width:15.3%;height:3.5%;display:grid;place-items:center;pointer-events:none;background:#fff8e5;color:#fff9ed;font:900 5cqw/1 'Arial',sans-serif;-webkit-text-stroke:1px #702b22;text-shadow:1px 1px #702b22,-1px -1px #702b22,1px -1px #702b22,-1px 1px #702b22}</style>
+<style>.phone [data-pet-level="1"]{--gem-image:url('assets/svg-01.svg');--gem-light:#ffd8ac;--gem-mid:#ca854a;--gem-shadow:#8b4928;--gem-edge:#59301f}
+.phone [data-pet-level="2"]{--gem-image:url('assets/svg-02.svg');--gem-light:#f7ffff;--gem-mid:#b8cadb;--gem-shadow:#6c829c;--gem-edge:#384959}
+.phone [data-pet-level="3"]{--gem-image:url('assets/svg-03.svg');--gem-light:#fff6a0;--gem-mid:#f5c32e;--gem-shadow:#b67a0e;--gem-edge:#684414}
+.phone [data-pet-level]:not([data-pet-level="0"]){position:relative;overflow:visible;border:4px solid;border-color:var(--gem-light) var(--gem-mid) var(--gem-shadow) var(--gem-mid);border-radius:7px;box-shadow:inset 0 0 0 1px var(--gem-edge),0 0 0 2px var(--gem-edge),0 2px 0 2px var(--gem-shadow)}
+.phone [data-pet-level]:not([data-pet-level="0"])::before{content:'';position:absolute;left:-10%;top:-13%;width:28%;height:35%;z-index:2;background:var(--gem-image) center/contain no-repeat;filter:drop-shadow(1px 1px 0 var(--gem-edge));pointer-events:none}
+.phone [data-pet-level]:not([data-pet-level="0"])::after{content:'';position:absolute;inset:-2px;pointer-events:none;border-radius:5px;background:linear-gradient(var(--gem-light),var(--gem-light)) right 1px top 3px/3px 8px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) right 3px top 1px/8px 3px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) left 1px bottom 3px/3px 8px no-repeat,linear-gradient(var(--gem-light),var(--gem-light)) left 3px bottom 1px/8px 3px no-repeat}
+.pet-collection .collection-grid{padding:9px 5px 3px;gap:15px 12px}
+.pet-rates:not(.pet-collection) .pet-rate-card{padding-top:13px}
+.phone .result-pet-portrait:not([data-pet-level="0"]){margin-top:3px}
+</style>
+</html>
